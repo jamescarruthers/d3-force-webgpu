@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Force Simulation Benchmark - GPU vs CPU Sequential</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 32px;
+    }
+    
+    #controls {
+      background: rgba(20, 20, 20, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 30px;
+    }
+    
+    .control-row {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+    
+    .control-group {
+      flex: 1;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #aaa;
+    }
+    
+    select, input[type="range"] {
+      width: 100%;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 0 10px;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    #benchmark-area {
+      display: flex;
+      gap: 20px;
+    }
+    
+    .simulation-panel {
+      flex: 1;
+      background: rgba(20, 20, 20, 0.9);
+      border-radius: 15px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .panel-title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .status-idle { background: #374151; color: #9ca3af; }
+    .status-running { background: #059669; color: white; }
+    .status-completed { background: #0369a1; color: white; }
+    
+    canvas {
+      width: 100%;
+      height: 400px;
+      background: #000;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+    
+    .metrics {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    
+    .metric-value {
+      font-weight: bold;
+      color: #60a5fa;
+    }
+    
+    #results {
+      margin-top: 30px;
+      background: rgba(20, 20, 20, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .result-card {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .result-title {
+      font-size: 14px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    
+    .result-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #60a5fa;
+      font-family: monospace;
+    }
+    
+    .result-unit {
+      font-size: 12px;
+      color: #aaa;
+    }
+    
+    .speedup {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+    
+    .range-value {
+      color: #667eea;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Force Simulation Performance Benchmark</h1>
+    
+    <div id="controls">
+      <div class="control-row">
+        <div class="control-group">
+          <label>Node Count</label>
+          <select id="nodeCount">
+            <option value="100">100 nodes</option>
+            <option value="300">300 nodes</option>
+            <option value="500" selected>500 nodes</option>
+            <option value="1000">1,000 nodes</option>
+            <option value="2000">2,000 nodes</option>
+            <option value="5000">5,000 nodes</option>
+            <option value="10000">10,000 nodes</option>
+          </select>
+        </div>
+        
+        <div class="control-group">
+          <label>Links per Node <span class="range-value" id="linkDensityValue">3</span></label>
+          <input type="range" id="linkDensity" min="1" max="8" value="3" step="1">
+        </div>
+        
+        <div class="control-group">
+          <label>Benchmark Duration <span class="range-value" id="durationValue">10</span> seconds</label>
+          <input type="range" id="duration" min="5" max="30" value="10" step="1">
+        </div>
+      </div>
+      
+      <div class="control-row">
+        <div class="control-group">
+          <label>Repulsion <span class="range-value" id="repulsionValue">300</span></label>
+          <input type="range" id="repulsion" min="50" max="2000" value="300" step="25">
+        </div>
+        
+        <div class="control-group">
+          <label>Link Strength <span class="range-value" id="linkStrengthValue">0.1</span></label>
+          <input type="range" id="linkStrength" min="0.01" max="0.5" value="0.1" step="0.01">
+        </div>
+        
+        <div class="control-group">
+          <label>Velocity Decay <span class="range-value" id="velocityDecayValue">0.6</span></label>
+          <input type="range" id="velocityDecay" min="0.1" max="0.99" value="0.6" step="0.01">
+        </div>
+      </div>
+      
+      <div class="control-row" style="justify-content: center; margin-top: 20px;">
+        <button id="startBenchmark">🏃‍♂️ Start Benchmark</button>
+        <button id="stopBenchmark" disabled>⏹️ Stop</button>
+        <button id="resetResults">🔄 Reset Results</button>
+      </div>
+      
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+    
+    <div id="benchmark-area">
+      <div class="simulation-panel">
+        <div class="panel-header">
+          <div class="panel-title">🔥 WebGPU Simulation</div>
+          <div class="status-badge status-idle" id="gpuStatus">Idle</div>
+        </div>
+        <canvas id="gpuCanvas" width="400" height="300"></canvas>
+        <div class="metrics">
+          <div class="metric">
+            <span>FPS:</span>
+            <span class="metric-value" id="gpuFPS">0</span>
+          </div>
+          <div class="metric">
+            <span>Avg FPS:</span>
+            <span class="metric-value" id="gpuAvgFPS">0</span>
+          </div>
+          <div class="metric">
+            <span>Frame Time:</span>
+            <span class="metric-value" id="gpuFrameTime">0ms</span>
+          </div>
+          <div class="metric">
+            <span>Total Frames:</span>
+            <span class="metric-value" id="gpuFrames">0</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="simulation-panel">
+        <div class="panel-header">
+          <div class="panel-title">💻 CPU Simulation</div>
+          <div class="status-badge status-idle" id="cpuStatus">Idle</div>
+        </div>
+        <canvas id="cpuCanvas" width="400" height="300"></canvas>
+        <div class="metrics">
+          <div class="metric">
+            <span>FPS:</span>
+            <span class="metric-value" id="cpuFPS">0</span>
+          </div>
+          <div class="metric">
+            <span>Avg FPS:</span>
+            <span class="metric-value" id="cpuAvgFPS">0</span>
+          </div>
+          <div class="metric">
+            <span>Frame Time:</span>
+            <span class="metric-value" id="cpuFrameTime">0ms</span>
+          </div>
+          <div class="metric">
+            <span>Total Frames:</span>
+            <span class="metric-value" id="cpuFrames">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="results">
+      <h2>📊 Benchmark Results</h2>
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-title">WebGPU Average FPS</div>
+          <div class="result-value" id="finalGpuFPS">-</div>
+          <div class="result-unit">frames/sec</div>
+        </div>
+        
+        <div class="result-card">
+          <div class="result-title">CPU Average FPS</div>
+          <div class="result-value" id="finalCpuFPS">-</div>
+          <div class="result-unit">frames/sec</div>
+        </div>
+        
+        <div class="result-card speedup">
+          <div class="result-title">Performance Speedup</div>
+          <div class="result-value" id="speedupValue">-</div>
+          <div class="result-unit">GPU vs CPU</div>
+        </div>
+        
+        <div class="result-card">
+          <div class="result-title">GPU Frame Time</div>
+          <div class="result-value" id="finalGpuTime">-</div>
+          <div class="result-unit">milliseconds</div>
+        </div>
+        
+        <div class="result-card">
+          <div class="result-title">CPU Frame Time</div>
+          <div class="result-value" id="finalCpuTime">-</div>
+          <div class="result-unit">milliseconds</div>
+        </div>
+        
+        <div class="result-card">
+          <div class="result-title">Winner</div>
+          <div class="result-value" id="winner">-</div>
+          <div class="result-unit">performance leader</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Canvas setup
+    const gpuCanvas = document.getElementById('gpuCanvas');
+    const cpuCanvas = document.getElementById('cpuCanvas');
+    const gpuCtx = gpuCanvas.getContext('2d');
+    const cpuCtx = cpuCanvas.getContext('2d');
+    
+    const canvasWidth = 400;
+    const canvasHeight = 300;
+    
+    // Set canvas resolution
+    [gpuCanvas, cpuCanvas].forEach(canvas => {
+      canvas.width = canvasWidth * window.devicePixelRatio;
+      canvas.height = canvasHeight * window.devicePixelRatio;
+      canvas.getContext('2d').scale(window.devicePixelRatio, window.devicePixelRatio);
+    });
+    
+    // Benchmark state
+    let benchmarkState = {
+      running: false,
+      phase: 'idle', // 'idle', 'gpu', 'cpu', 'completed'
+      startTime: 0,
+      duration: 10000, // ms
+      
+      // Results
+      gpuResults: { fps: [], frameTimes: [], totalFrames: 0 },
+      cpuResults: { fps: [], frameTimes: [], totalFrames: 0 }
+    };
+    
+    // Graph data
+    let nodes = [];
+    let links = [];
+    
+    // Simulation instances
+    let gpuSim, cpuSim;
+    
+    // Simple CPU Force Simulation
+    class CPUSimulation {
+      constructor(nodes, links, ctx) {
+        this.nodes = nodes;
+        this.links = links;
+        this.ctx = ctx;
+        this.running = false;
+        this.animationId = null;
+        
+        // Parameters
+        this.repulsionStrength = 300;
+        this.linkStrength = 0.1;
+        this.velocityDecay = 0.6;
+        this.alpha = 1;
+        this.alphaDecay = 0.02;
+        
+        // Performance tracking
+        this.frameCount = 0;
+        this.fpsHistory = [];
+        this.frameTimeHistory = [];
+        this.lastTime = performance.now();
+      }
+      
+      step() {
+        const startTime = performance.now();
+        
+        // Update alpha
+        this.alpha *= (1 - this.alphaDecay);
+        if (this.alpha < 0.001) this.alpha = 0.001;
+        
+        // Apply forces
+        for (const link of this.links) {
+          const source = this.nodes[link.source];
+          const target = this.nodes[link.target];
+          
+          const dx = target.x - source.x;
+          const dy = target.y - source.y;
+          const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+          
+          const force = (distance - 50) * this.linkStrength * this.alpha;
+          const fx = (dx / distance) * force;
+          const fy = (dy / distance) * force;
+          
+          source.vx += fx;
+          source.vy += fy;
+          target.vx -= fx;
+          target.vy -= fy;
+        }
+        
+        // Apply repulsion and update positions
+        for (let i = 0; i < this.nodes.length; i++) {
+          const node = this.nodes[i];
+          let fx = 0, fy = 0;
+          
+          for (let j = 0; j < this.nodes.length; j++) {
+            if (i === j) continue;
+            
+            const other = this.nodes[j];
+            const dx = node.x - other.x;
+            const dy = node.y - other.y;
+            const distSq = dx * dx + dy * dy;
+            
+            if (distSq > 1 && distSq < 40000) {
+              const dist = Math.sqrt(distSq);
+              const force = this.repulsionStrength * this.alpha / distSq;
+              fx += (dx / dist) * force;
+              fy += (dy / dist) * force;
+            }
+          }
+          
+          // Center attraction
+          fx += (canvasWidth / 2 - node.x) * 0.01 * this.alpha;
+          fy += (canvasHeight / 2 - node.y) * 0.01 * this.alpha;
+          
+          // Update
+          node.vx = (node.vx + fx) * this.velocityDecay;
+          node.vy = (node.vy + fy) * this.velocityDecay;
+          node.x += node.vx;
+          node.y += node.vy;
+          
+          // Boundaries
+          if (node.x < 10) { node.x = 10; node.vx *= -0.5; }
+          if (node.x > canvasWidth - 10) { node.x = canvasWidth - 10; node.vx *= -0.5; }
+          if (node.y < 10) { node.y = 10; node.vy *= -0.5; }
+          if (node.y > canvasHeight - 10) { node.y = canvasHeight - 10; node.vy *= -0.5; }
+        }
+        
+        const frameTime = performance.now() - startTime;
+        this.frameTimeHistory.push(frameTime);
+        this.frameCount++;
+        
+        this.render();
+        
+        // Update stats
+        const now = performance.now();
+        if (now - this.lastTime >= 1000) {
+          const fps = Math.round(this.frameCount * 1000 / (now - this.lastTime));
+          this.fpsHistory.push(fps);
+          this.frameCount = 0;
+          this.lastTime = now;
+          
+          document.getElementById('cpuFPS').textContent = fps;
+          document.getElementById('cpuFrameTime').textContent = frameTime.toFixed(1) + 'ms';
+          
+          const avgFPS = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+          document.getElementById('cpuAvgFPS').textContent = avgFPS.toFixed(1);
+          document.getElementById('cpuFrames').textContent = benchmarkState.cpuResults.totalFrames;
+        }
+        
+        benchmarkState.cpuResults.totalFrames++;
+      }
+      
+      render() {
+        // Clear
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        
+        // Draw links
+        this.ctx.strokeStyle = 'rgba(100, 150, 200, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        for (const link of this.links) {
+          const source = this.nodes[link.source];
+          const target = this.nodes[link.target];
+          this.ctx.moveTo(source.x, source.y);
+          this.ctx.lineTo(target.x, target.y);
+        }
+        this.ctx.stroke();
+        
+        // Draw nodes
+        this.nodes.forEach((node, i) => {
+          const hue = (i / this.nodes.length) * 360;
+          this.ctx.fillStyle = `hsl(${hue}, 60%, 60%)`;
+          this.ctx.beginPath();
+          this.ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
+          this.ctx.fill();
+        });
+      }
+      
+      start() {
+        this.running = true;
+        this.frameCount = 0;
+        this.fpsHistory = [];
+        this.frameTimeHistory = [];
+        this.lastTime = performance.now();
+        
+        const animate = () => {
+          if (!this.running) return;
+          this.step();
+          this.animationId = requestAnimationFrame(animate);
+        };
+        animate();
+      }
+      
+      stop() {
+        this.running = false;
+        if (this.animationId) {
+          cancelAnimationFrame(this.animationId);
+          this.animationId = null;
+        }
+        
+        // Store results
+        benchmarkState.cpuResults.fps = [...this.fpsHistory];
+        benchmarkState.cpuResults.frameTimes = [...this.frameTimeHistory];
+      }
+    }
+    
+    // WebGPU Simulation (simplified for benchmark)
+    class WebGPUSimulation {
+      constructor(nodes, links, ctx) {
+        this.nodes = nodes;
+        this.links = links;
+        this.ctx = ctx;
+        this.device = null;
+        this.running = false;
+        this.initialized = false;
+        
+        // Parameters
+        this.repulsionStrength = 300;
+        this.linkStrength = 0.1;
+        this.velocityDecay = 0.6;
+        this.alpha = 1;
+        this.alphaDecay = 0.02;
+        
+        // Performance tracking
+        this.frameCount = 0;
+        this.fpsHistory = [];
+        this.frameTimeHistory = [];
+        this.lastTime = performance.now();
+      }
+      
+      async initialize() {
+        if (!navigator.gpu) {
+          throw new Error('WebGPU not supported');
+        }
+        
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+          throw new Error('WebGPU adapter not found');
+        }
+        
+        this.device = await adapter.requestDevice();
+        await this.createBuffers();
+        await this.createPipeline();
+        this.initialized = true;
+      }
+      
+      async createBuffers() {
+        // Node data
+        const nodeData = new Float32Array(this.nodes.length * 4);
+        for (let i = 0; i < this.nodes.length; i++) {
+          nodeData[i * 4 + 0] = this.nodes[i].x;
+          nodeData[i * 4 + 1] = this.nodes[i].y;
+          nodeData[i * 4 + 2] = this.nodes[i].vx || 0;
+          nodeData[i * 4 + 3] = this.nodes[i].vy || 0;
+        }
+        
+        this.nodeBuffer = this.device.createBuffer({
+          size: nodeData.byteLength,
+          usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+          mappedAtCreation: true
+        });
+        new Float32Array(this.nodeBuffer.getMappedRange()).set(nodeData);
+        this.nodeBuffer.unmap();
+        
+        // Link data
+        const linkData = new Uint32Array(this.links.length * 2);
+        for (let i = 0; i < this.links.length; i++) {
+          linkData[i * 2 + 0] = this.links[i].source;
+          linkData[i * 2 + 1] = this.links[i].target;
+        }
+        
+        this.linkBuffer = this.device.createBuffer({
+          size: Math.max(linkData.byteLength, 8),
+          usage: GPUBufferUsage.STORAGE,
+          mappedAtCreation: true
+        });
+        if (linkData.byteLength > 0) {
+          new Uint32Array(this.linkBuffer.getMappedRange()).set(linkData);
+        }
+        this.linkBuffer.unmap();
+        
+        // Parameters buffer
+        this.paramsBuffer = this.device.createBuffer({
+          size: 32,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        
+        this.readBuffer = this.device.createBuffer({
+          size: nodeData.byteLength,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ
+        });
+      }
+      
+      async createPipeline() {
+        const shaderSource = `
+          struct Node { x: f32, y: f32, vx: f32, vy: f32, }
+          struct Link { source: u32, dest: u32, }
+          struct Params {
+            repulsion: f32, link_strength: f32, velocity_decay: f32, alpha: f32,
+            center_x: f32, center_y: f32, width: f32, height: f32,
+          }
+          
+          @group(0) @binding(0) var<storage, read_write> nodes: array<Node>;
+          @group(0) @binding(1) var<storage, read> links: array<Link>;
+          @group(0) @binding(2) var<uniform> params: Params;
+          
+          @compute @workgroup_size(64)
+          fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+            let idx = id.x;
+            if (idx >= arrayLength(&nodes)) { return; }
+            
+            var node = nodes[idx];
+            var fx = 0.0; var fy = 0.0;
+            
+            // Link forces
+            for (var i = 0u; i < arrayLength(&links); i++) {
+              let link = links[i];
+              var other_idx: u32; var connected = false;
+              
+              if (link.source == idx) { other_idx = link.dest; connected = true; }
+              else if (link.dest == idx) { other_idx = link.source; connected = true; }
+              
+              if (connected) {
+                let other = nodes[other_idx];
+                let dx = other.x - node.x;
+                let dy = other.y - node.y;
+                let dist = sqrt(dx * dx + dy * dy);
+                if (dist > 0.1) {
+                  let force = (dist - 50.0) * params.link_strength * params.alpha;
+                  fx += (dx / dist) * force;
+                  fy += (dy / dist) * force;
+                }
+              }
+            }
+            
+            // Repulsion
+            for (var i = 0u; i < arrayLength(&nodes); i++) {
+              if (i == idx) { continue; }
+              let other = nodes[i];
+              let dx = node.x - other.x;
+              let dy = node.y - other.y;
+              let distSq = dx * dx + dy * dy;
+              
+              if (distSq > 1.0 && distSq < 40000.0) {
+                let dist = sqrt(distSq);
+                let force = params.repulsion * params.alpha / distSq;
+                fx += (dx / dist) * force;
+                fy += (dy / dist) * force;
+              }
+            }
+            
+            // Center + update
+            fx += (params.center_x - node.x) * 0.01 * params.alpha;
+            fy += (params.center_y - node.y) * 0.01 * params.alpha;
+            
+            node.vx = (node.vx + fx) * params.velocity_decay;
+            node.vy = (node.vy + fy) * params.velocity_decay;
+            node.x += node.vx;
+            node.y += node.vy;
+            
+            // Boundaries
+            if (node.x < 10.0) { node.x = 10.0; node.vx *= -0.5; }
+            if (node.x > params.width - 10.0) { node.x = params.width - 10.0; node.vx *= -0.5; }
+            if (node.y < 10.0) { node.y = 10.0; node.vy *= -0.5; }
+            if (node.y > params.height - 10.0) { node.y = params.height - 10.0; node.vy *= -0.5; }
+            
+            nodes[idx] = node;
+          }
+        `;
+        
+        const shaderModule = this.device.createShaderModule({ code: shaderSource });
+        const bindGroupLayout = this.device.createBindGroupLayout({
+          entries: [
+            { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+            { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'read-only-storage' } },
+            { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }
+          ]
+        });
+        
+        this.pipeline = this.device.createComputePipeline({
+          layout: this.device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+          compute: { module: shaderModule, entryPoint: 'main' }
+        });
+        
+        this.bindGroup = this.device.createBindGroup({
+          layout: bindGroupLayout,
+          entries: [
+            { binding: 0, resource: { buffer: this.nodeBuffer } },
+            { binding: 1, resource: { buffer: this.linkBuffer } },
+            { binding: 2, resource: { buffer: this.paramsBuffer } }
+          ]
+        });
+      }
+      
+      updateParams() {
+        const params = new Float32Array([
+          this.repulsionStrength, this.linkStrength, this.velocityDecay, this.alpha,
+          canvasWidth / 2, canvasHeight / 2, canvasWidth, canvasHeight
+        ]);
+        this.device.queue.writeBuffer(this.paramsBuffer, 0, params);
+      }
+      
+      async step() {
+        if (!this.initialized) return;
+        
+        const startTime = performance.now();
+        
+        // Update alpha
+        this.alpha *= (1 - this.alphaDecay);
+        if (this.alpha < 0.001) this.alpha = 0.001;
+        
+        this.updateParams();
+        
+        // GPU compute
+        const commandEncoder = this.device.createCommandEncoder();
+        const computePass = commandEncoder.beginComputePass();
+        computePass.setPipeline(this.pipeline);
+        computePass.setBindGroup(0, this.bindGroup);
+        computePass.dispatchWorkgroups(Math.ceil(this.nodes.length / 64));
+        computePass.end();
+        
+        commandEncoder.copyBufferToBuffer(this.nodeBuffer, 0, this.readBuffer, 0, this.nodeBuffer.size);
+        this.device.queue.submit([commandEncoder.finish()]);
+        
+        // Read results
+        await this.readBuffer.mapAsync(GPUMapMode.READ);
+        const data = new Float32Array(this.readBuffer.getMappedRange());
+        
+        for (let i = 0; i < this.nodes.length; i++) {
+          this.nodes[i].x = data[i * 4 + 0];
+          this.nodes[i].y = data[i * 4 + 1];
+          this.nodes[i].vx = data[i * 4 + 2];
+          this.nodes[i].vy = data[i * 4 + 3];
+        }
+        
+        this.readBuffer.unmap();
+        
+        const frameTime = performance.now() - startTime;
+        this.frameTimeHistory.push(frameTime);
+        this.frameCount++;
+        
+        this.render();
+        
+        // Update stats
+        const now = performance.now();
+        if (now - this.lastTime >= 1000) {
+          const fps = Math.round(this.frameCount * 1000 / (now - this.lastTime));
+          this.fpsHistory.push(fps);
+          this.frameCount = 0;
+          this.lastTime = now;
+          
+          document.getElementById('gpuFPS').textContent = fps;
+          document.getElementById('gpuFrameTime').textContent = frameTime.toFixed(1) + 'ms';
+          
+          const avgFPS = this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length;
+          document.getElementById('gpuAvgFPS').textContent = avgFPS.toFixed(1);
+          document.getElementById('gpuFrames').textContent = benchmarkState.gpuResults.totalFrames;
+        }
+        
+        benchmarkState.gpuResults.totalFrames++;
+      }
+      
+      render() {
+        // Clear
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        this.ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        
+        // Draw links
+        this.ctx.strokeStyle = 'rgba(255, 100, 150, 0.4)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        for (const link of this.links) {
+          const source = this.nodes[link.source];
+          const target = this.nodes[link.target];
+          this.ctx.moveTo(source.x, source.y);
+          this.ctx.lineTo(target.x, target.y);
+        }
+        this.ctx.stroke();
+        
+        // Draw nodes
+        this.nodes.forEach((node, i) => {
+          const hue = (i / this.nodes.length) * 360;
+          this.ctx.fillStyle = `hsl(${hue}, 70%, 70%)`;
+          this.ctx.beginPath();
+          this.ctx.arc(node.x, node.y, 3, 0, Math.PI * 2);
+          this.ctx.fill();
+        });
+      }
+      
+      start() {
+        this.running = true;
+        this.frameCount = 0;
+        this.fpsHistory = [];
+        this.frameTimeHistory = [];
+        this.lastTime = performance.now();
+        
+        const animate = async () => {
+          if (!this.running) return;
+          await this.step();
+          requestAnimationFrame(animate);
+        };
+        animate();
+      }
+      
+      stop() {
+        this.running = false;
+        benchmarkState.gpuResults.fps = [...this.fpsHistory];
+        benchmarkState.gpuResults.frameTimes = [...this.frameTimeHistory];
+      }
+    }
+    
+    // Create graph data
+    function createGraph(nodeCount, linkDensity) {
+      nodes = Array.from({length: nodeCount}, (_, i) => ({
+        id: i,
+        x: canvasWidth / 2 + (Math.random() - 0.5) * 100,
+        y: canvasHeight / 2 + (Math.random() - 0.5) * 100,
+        vx: 0, vy: 0
+      }));
+      
+      links = [];
+      const targetLinks = nodeCount * linkDensity;
+      
+      for (let i = 0; i < targetLinks; i++) {
+        const source = Math.floor(Math.random() * nodeCount);
+        const target = Math.floor(Math.random() * nodeCount);
+        
+        if (source !== target && !links.some(l => 
+          (l.source === source && l.target === target) ||
+          (l.source === target && l.target === source)
+        )) {
+          links.push({ source, target });
+        }
+      }
+    }
+    
+    // Benchmark control
+    async function startBenchmark() {
+      benchmarkState.running = true;
+      benchmarkState.duration = parseInt(document.getElementById('duration').value) * 1000;
+      
+      document.getElementById('startBenchmark').disabled = true;
+      document.getElementById('stopBenchmark').disabled = false;
+      
+      // Create graph
+      const nodeCount = parseInt(document.getElementById('nodeCount').value);
+      const linkDensity = parseInt(document.getElementById('linkDensity').value);
+      createGraph(nodeCount, linkDensity);
+      
+      // Get parameters
+      const repulsion = parseFloat(document.getElementById('repulsion').value);
+      const linkStrength = parseFloat(document.getElementById('linkStrength').value);
+      const velocityDecay = parseFloat(document.getElementById('velocityDecay').value);
+      
+      // Phase 1: GPU Benchmark
+      benchmarkState.phase = 'gpu';
+      document.getElementById('gpuStatus').textContent = 'Running';
+      document.getElementById('gpuStatus').className = 'status-badge status-running';
+      
+      const gpuNodes = nodes.map(n => ({...n}));
+      const gpuLinks = [...links];
+      
+      gpuSim = new WebGPUSimulation(gpuNodes, gpuLinks, gpuCtx);
+      gpuSim.repulsionStrength = repulsion;
+      gpuSim.linkStrength = linkStrength;
+      gpuSim.velocityDecay = velocityDecay;
+      
+      try {
+        await gpuSim.initialize();
+        benchmarkState.startTime = performance.now();
+        gpuSim.start();
+        
+        // Wait for GPU benchmark to complete
+        setTimeout(() => {
+          if (!benchmarkState.running) return;
+          
+          gpuSim.stop();
+          document.getElementById('gpuStatus').textContent = 'Completed';
+          document.getElementById('gpuStatus').className = 'status-badge status-completed';
+          
+          // Phase 2: CPU Benchmark
+          startCPUBenchmark(repulsion, linkStrength, velocityDecay);
+        }, benchmarkState.duration);
+        
+      } catch (error) {
+        console.error('GPU benchmark failed:', error);
+        document.getElementById('gpuStatus').textContent = 'Failed';
+        document.getElementById('gpuStatus').className = 'status-badge status-idle';
+        startCPUBenchmark(repulsion, linkStrength, velocityDecay);
+      }
+    }
+    
+    function startCPUBenchmark(repulsion, linkStrength, velocityDecay) {
+      benchmarkState.phase = 'cpu';
+      document.getElementById('cpuStatus').textContent = 'Running';
+      document.getElementById('cpuStatus').className = 'status-badge status-running';
+      
+      const cpuNodes = nodes.map(n => ({...n}));
+      const cpuLinks = [...links];
+      
+      cpuSim = new CPUSimulation(cpuNodes, cpuLinks, cpuCtx);
+      cpuSim.repulsionStrength = repulsion;
+      cpuSim.linkStrength = linkStrength;
+      cpuSim.velocityDecay = velocityDecay;
+      
+      benchmarkState.startTime = performance.now();
+      cpuSim.start();
+      
+      setTimeout(() => {
+        if (!benchmarkState.running) return;
+        
+        cpuSim.stop();
+        document.getElementById('cpuStatus').textContent = 'Completed';
+        document.getElementById('cpuStatus').className = 'status-badge status-completed';
+        
+        completeBenchmark();
+      }, benchmarkState.duration);
+    }
+    
+    function completeBenchmark() {
+      benchmarkState.running = false;
+      benchmarkState.phase = 'completed';
+      
+      document.getElementById('startBenchmark').disabled = false;
+      document.getElementById('stopBenchmark').disabled = true;
+      document.getElementById('progressFill').style.width = '100%';
+      
+      // Calculate results
+      const gpuAvgFPS = benchmarkState.gpuResults.fps.length > 0 
+        ? benchmarkState.gpuResults.fps.reduce((a, b) => a + b, 0) / benchmarkState.gpuResults.fps.length 
+        : 0;
+      
+      const cpuAvgFPS = benchmarkState.cpuResults.fps.length > 0
+        ? benchmarkState.cpuResults.fps.reduce((a, b) => a + b, 0) / benchmarkState.cpuResults.fps.length
+        : 0;
+      
+      const gpuAvgFrameTime = benchmarkState.gpuResults.frameTimes.length > 0
+        ? benchmarkState.gpuResults.frameTimes.reduce((a, b) => a + b, 0) / benchmarkState.gpuResults.frameTimes.length
+        : 0;
+      
+      const cpuAvgFrameTime = benchmarkState.cpuResults.frameTimes.length > 0
+        ? benchmarkState.cpuResults.frameTimes.reduce((a, b) => a + b, 0) / benchmarkState.cpuResults.frameTimes.length
+        : 0;
+      
+      const speedup = cpuAvgFPS > 0 ? gpuAvgFPS / cpuAvgFPS : 0;
+      
+      // Display results
+      document.getElementById('finalGpuFPS').textContent = gpuAvgFPS.toFixed(1);
+      document.getElementById('finalCpuFPS').textContent = cpuAvgFPS.toFixed(1);
+      document.getElementById('speedupValue').textContent = speedup.toFixed(1) + 'x';
+      document.getElementById('finalGpuTime').textContent = gpuAvgFrameTime.toFixed(1);
+      document.getElementById('finalCpuTime').textContent = cpuAvgFrameTime.toFixed(1);
+      
+      if (speedup > 1.1) {
+        document.getElementById('winner').textContent = '🚀 WebGPU';
+      } else if (speedup < 0.9) {
+        document.getElementById('winner').textContent = '💻 CPU';
+      } else {
+        document.getElementById('winner').textContent = '🤝 Tie';
+      }
+    }
+    
+    function stopBenchmark() {
+      benchmarkState.running = false;
+      if (gpuSim) gpuSim.stop();
+      if (cpuSim) cpuSim.stop();
+      
+      document.getElementById('startBenchmark').disabled = false;
+      document.getElementById('stopBenchmark').disabled = true;
+      document.getElementById('gpuStatus').className = 'status-badge status-idle';
+      document.getElementById('cpuStatus').className = 'status-badge status-idle';
+      document.getElementById('progressFill').style.width = '0%';
+    }
+    
+    function resetResults() {
+      benchmarkState.gpuResults = { fps: [], frameTimes: [], totalFrames: 0 };
+      benchmarkState.cpuResults = { fps: [], frameTimes: [], totalFrames: 0 };
+      
+      ['finalGpuFPS', 'finalCpuFPS', 'speedupValue', 'finalGpuTime', 'finalCpuTime', 'winner'].forEach(id => {
+        document.getElementById(id).textContent = '-';
+      });
+      
+      ['gpuFPS', 'gpuAvgFPS', 'gpuFrameTime', 'gpuFrames', 'cpuFPS', 'cpuAvgFPS', 'cpuFrameTime', 'cpuFrames'].forEach(id => {
+        document.getElementById(id).textContent = '0';
+      });
+    }
+    
+    // Progress update
+    setInterval(() => {
+      if (benchmarkState.running && benchmarkState.startTime > 0) {
+        const elapsed = performance.now() - benchmarkState.startTime;
+        const progress = Math.min(elapsed / benchmarkState.duration, 1) * 100;
+        document.getElementById('progressFill').style.width = progress + '%';
+      }
+    }, 100);
+    
+    // Event listeners
+    document.getElementById('startBenchmark').addEventListener('click', startBenchmark);
+    document.getElementById('stopBenchmark').addEventListener('click', stopBenchmark);
+    document.getElementById('resetResults').addEventListener('click', resetResults);
+    
+    // Parameter controls with live updates
+    ['linkDensity', 'duration', 'repulsion', 'linkStrength', 'velocityDecay'].forEach(id => {
+      const element = document.getElementById(id);
+      const valueElement = document.getElementById(id + 'Value');
+      
+      element.addEventListener('input', (e) => {
+        valueElement.textContent = e.target.value;
+      });
+    });
+    
+    // Check WebGPU support
+    if (!navigator.gpu) {
+      document.getElementById('gpuStatus').textContent = 'Not Supported';
+      document.getElementById('gpuStatus').className = 'status-badge status-idle';
+    }
+  </script>
+</body>
+</html>
