@@ -1,11 +1,11 @@
 {
-  "name": "d3-force",
-  "version": "3.0.0",
-  "description": "Force-directed graph layout using velocity Verlet integration.",
-  "homepage": "https://d3js.org/d3-force/",
+  "name": "d3-force-webgpu",
+  "version": "1.0.0",
+  "description": "GPU-accelerated force-directed graph layout with adaptive CPU/GPU selection. Drop-in replacement for d3-force with WebGPU support.",
+  "homepage": "https://github.com/jamescarruthers/d3-force-webgpu",
   "repository": {
     "type": "git",
-    "url": "https://github.com/d3/d3-force.git"
+    "url": "https://github.com/jamescarruthers/d3-force-webgpu.git"
   },
   "keywords": [
     "d3",
@@ -15,25 +15,40 @@
     "graph",
     "force",
     "verlet",
-    "infovis"
+    "infovis",
+    "webgpu",
+    "gpu",
+    "acceleration",
+    "adaptive",
+    "performance"
   ],
   "license": "ISC",
   "author": {
-    "name": "Mike Bostock",
-    "url": "https://bost.ocks.org/mike"
+    "name": "Your Name",
+    "url": "https://your-website.com"
   },
   "type": "module",
   "files": [
     "src/**/*.js",
     "dist/**/*.js"
   ],
-  "module": "src/index.js",
-  "main": "src/index.js",
-  "jsdelivr": "dist/d3-force.min.js",
-  "unpkg": "dist/d3-force.min.js",
+  "module": "src/index-adaptive.js",
+  "main": "src/index-adaptive.js",
+  "jsdelivr": "dist/d3-force-webgpu.min.js",
+  "unpkg": "dist/d3-force-webgpu.min.js",
   "exports": {
-    "umd": "./dist/d3-force.min.js",
-    "default": "./src/index.js"
+    ".": {
+      "default": "./src/index-adaptive.js"
+    },
+    "./cpu": {
+      "default": "./src/index.js"
+    },
+    "./gpu": {
+      "default": "./src/index-gpu.js"
+    },
+    "./adaptive": {
+      "default": "./src/index-adaptive.js"
+    }
   },
   "sideEffects": false,
   "dependencies": {
