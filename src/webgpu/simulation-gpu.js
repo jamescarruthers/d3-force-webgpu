@@ -80,8 +80,6 @@ export default function(nodes) {
   }
 
   async function tick(iterations) {
-    var i, n = nodes.length, node;
-
     if (iterations === undefined) iterations = 1;
 
     if (!isGPUInitialized) {

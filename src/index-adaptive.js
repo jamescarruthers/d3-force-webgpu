@@ -1,4 +1,5 @@
 // Main adaptive d3-force package with intelligent CPU/GPU selection
+import forceSimulationAdaptive from "./adaptive-simulation.js";
 
 // Export adaptive simulation (recommended)
 export {default as forceSimulation, AdaptiveConfig, forceCPU, forceGPU, forceAuto} from "./adaptive-simulation.js";
@@ -49,10 +50,10 @@ export function getRecommendedMode(nodes, links = []) {
   return { mode: 'auto', reason: 'Let adaptive mode decide based on performance' };
 }
 
-export function createOptimalSimulation(nodes, options = {}) {
+export async function createOptimalSimulation(nodes, options = {}) {
   const recommendation = getRecommendedMode(nodes, options.links);
   
-  return forceSimulation(nodes, {
+  return await forceSimulationAdaptive(nodes, {
     mode: recommendation.mode,
     enableSwitching: true,
     onModeChange: (mode, reason) => {

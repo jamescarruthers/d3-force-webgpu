@@ -1,5 +1,5 @@
-import {forceSimulation as cpuSimulation} from "./simulation.js";
-import {forceSimulationGPU} from "./webgpu/simulation-gpu.js";
+import cpuSimulation from "./simulation.js";
+import forceSimulationGPU from "./webgpu/simulation-gpu.js";
 
 // Performance thresholds based on typical benchmarks
 const PERFORMANCE_THRESHOLDS = {
@@ -89,13 +89,12 @@ class PerformanceMonitor {
 }
 
 // Adaptive force simulation that chooses the best implementation
-export default function forceSimulationAdaptive(nodes, options = {}) {
+export default async function forceSimulationAdaptive(nodes, options = {}) {
   const {
     mode = 'auto', // 'auto', 'cpu', 'gpu', 'hybrid'
     enableSwitching = true, // Allow dynamic switching based on performance
     onModeChange = null, // Callback when mode changes
-    estimatedLinkCount = nodes?.length * 2,
-    performanceThreshold = PERFORMANCE_THRESHOLDS.MIN_CPU_FPS
+    estimatedLinkCount = nodes?.length * 2
   } = options;
   
   let currentMode = mode;

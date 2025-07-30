@@ -10,7 +10,7 @@ const copyright = readFileSync("./LICENSE", "utf-8")
   .join(", ");
 
 const config = {
-  input: "src/index.js",
+  input: "src/index-adaptive.js",
   external: Object.keys(meta.dependencies || {}).filter(key => /^d3-/.test(key)),
   output: {
     file: `dist/${meta.name}.js`,
