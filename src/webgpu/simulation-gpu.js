@@ -1,5 +1,5 @@
-import {dispatch} from "https://cdn.jsdelivr.net/npm/d3-dispatch@3/+esm";
-import {timer} from "https://cdn.jsdelivr.net/npm/d3-timer@3/+esm";
+import {dispatch} from "d3-dispatch";
+import {timer} from "d3-timer";
 import lcg from "../lcg.js";
 import {getWebGPUContext} from "./webgpu-context.js";
 import {BufferManager} from "./buffer-manager.js";
