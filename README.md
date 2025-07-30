@@ -1,4 +1,4 @@
-# d3-force
+# d3-force-webgpu
 
 <a href="https://d3js.org"><img src="https://github.com/d3/d3/raw/main/docs/public/logo.svg" width="256" height="256"></a>
 
