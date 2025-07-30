@@ -2,12 +2,20 @@
   "extends": "eslint:recommended",
   "parserOptions": {
     "sourceType": "module",
-    "ecmaVersion": 8
+    "ecmaVersion": 12
   },
   "env": {
-    "es6": true
+    "es6": true,
+    "browser": true,
+    "node": true
+  },
+  "globals": {
+    "GPUBufferUsage": "readonly",
+    "GPUShaderStage": "readonly",
+    "GPUMapMode": "readonly"
   },
   "rules": {
-    "no-cond-assign": 0
+    "no-cond-assign": 0,
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
   }
 }

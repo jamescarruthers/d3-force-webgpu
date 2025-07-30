@@ -1,0 +1,30 @@
+# Development files
+test/
+examples/
+img/
+rollup.config.js
+yarn.lock
+d3-force/
+
+# Documentation
+README-webgpu.md
+
+# Build artifacts
+.nyc_output
+coverage/
+
+# IDE and OS files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Demo files
+demo*.html
+benchmark*.html
+*test*.html
