@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D3 Force WebGPU Demo</title>
+  <!-- Import map to resolve bare module specifiers -->
+  <script type="importmap">
+  {
+    "imports": {
+      "d3-dispatch": "https://cdn.jsdelivr.net/npm/d3-dispatch@3/+esm",
+      "d3-quadtree": "https://cdn.jsdelivr.net/npm/d3-quadtree@3/+esm",
+      "d3-timer": "https://cdn.jsdelivr.net/npm/d3-timer@3/+esm"
+    }
+  }
+  </script>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      overflow: hidden;
+    }
+    #info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 100;
+    }
+    #info h3 {
+      margin: 0 0 10px 0;
+      color: #4fc3f7;
+    }
+    #stats {
+      font-family: monospace;
+    }
+    .stat-row {
+      margin: 5px 0;
+    }
+    .stat-label {
+      color: #888;
+    }
+    .stat-value {
+      color: #4fc3f7;
+      font-weight: bold;
+    }
+    #controls {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      border-radius: 8px;
+      z-index: 100;
+    }
+    button {
+      background: #4fc3f7;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #03a9f4;
+    }
+    input[type="range"] {
+      width: 150px;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h3>D3 Force WebGPU</h3>
+    <div id="stats">
+      <div class="stat-row">
+        <span class="stat-label">Mode:</span>
+        <span class="stat-value" id="mode">Checking...</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Nodes:</span>
+        <span class="stat-value" id="nodeCount">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Links:</span>
+        <span class="stat-value" id="linkCount">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">FPS:</span>
+        <span class="stat-value" id="fps">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Alpha:</span>
+        <span class="stat-value" id="alpha">1.000</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Tick Time:</span>
+        <span class="stat-value" id="tickTime">0.00</span><span class="stat-label"> ms</span>
+      </div>
+      <hr style="border-color: #444; margin: 10px 0;">
+      <div class="stat-row">
+        <span class="stat-label">Elapsed:</span>
+        <span class="stat-value" id="elapsed">0.0</span><span class="stat-label">s</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Total Ticks:</span>
+        <span class="stat-value" id="totalTicks">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Avg Tick:</span>
+        <span class="stat-value" id="avgTickTime">0.00</span><span class="stat-label"> ms</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Avg FPS:</span>
+        <span class="stat-value" id="avgFps">0.0</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <div>
+      <label>Nodes: <span id="nodeSliderValue">500</span></label><br>
+      <input type="range" id="nodeSlider" min="100" max="5000" value="500" step="100">
+    </div>
+    <div style="margin-top: 10px;">
+      <label>Charge Strength: <span id="chargeValue">-30</span></label><br>
+      <input type="range" id="chargeSlider" min="-100" max="0" value="-30">
+    </div>
+    <div style="margin-top: 10px;">
+      <label>
+        <input type="checkbox" id="useGPU" checked>
+        Use WebGPU
+      </label>
+    </div>
+    <hr style="border-color: #444; margin: 10px 0;">
+    <div style="font-size: 12px; color: #888; margin-bottom: 5px;">Forces:</div>
+    <div>
+      <label><input type="checkbox" id="useForceX"> ForceX</label>
+    </div>
+    <div>
+      <label><input type="checkbox" id="useForceY"> ForceY</label>
+    </div>
+    <div>
+      <label><input type="checkbox" id="useRadial"> Radial</label>
+    </div>
+    <div style="margin-top: 10px;">
+      <button id="restartBtn">Restart Simulation</button>
+      <button id="reheatBtn">Reheat</button>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script type="module">
+    // Import from the source directly for development
+    import {
+      forceSimulation,
+      forceSimulationGPU,
+      forceLink,
+      forceManyBody,
+      forceCenter,
+      forceCollide,
+      forceX,
+      forceY,
+      forceRadial,
+      isWebGPUAvailable,
+      checkWebGPUSupport
+    } from '../src/index.js';
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    let nodes = [];
+    let links = [];
+    let simulation = null;
+    let useGPU = true;
+    let gpuAvailable = false;
+
+    // FPS and timing tracking (current second)
+    let frameCount = 0;
+    let lastTime = performance.now();
+    let tickTimes = [];
+    let lastTickStart = 0;
+
+    // Cumulative stats from simulation start
+    let simStartTime = 0;
+    let totalTickCount = 0;
+    let totalTickTime = 0;
+    let totalFrameCount = 0;
+
+    // Generate random graph data
+    function generateGraph(nodeCount) {
+      const newNodes = [];
+      const newLinks = [];
+
+      for (let i = 0; i < nodeCount; i++) {
+        newNodes.push({
+          id: i,
+          radius: 3 + Math.random() * 4,
+          color: `hsl(${(i / nodeCount) * 360}, 70%, 60%)`
+        });
+      }
+
+      // Create random links (average degree ~3)
+      const linkCount = Math.floor(nodeCount * 1.5);
+      for (let i = 0; i < linkCount; i++) {
+        const source = Math.floor(Math.random() * nodeCount);
+        let target = Math.floor(Math.random() * nodeCount);
+        if (source !== target) {
+          newLinks.push({ source, target });
+        }
+      }
+
+      return { nodes: newNodes, links: newLinks };
+    }
+
+    // Check WebGPU support on load
+    async function checkGPU() {
+      gpuAvailable = await checkWebGPUSupport();
+      if (!gpuAvailable) {
+        document.getElementById('useGPU').checked = false;
+        document.getElementById('useGPU').disabled = true;
+        useGPU = false;
+      }
+    }
+    checkGPU();
+
+    // Initialize simulation
+    async function initSimulation(nodeCount, chargeStrength) {
+      const graph = generateGraph(nodeCount);
+      nodes = graph.nodes;
+      links = graph.links;
+
+      document.getElementById('nodeCount').textContent = nodes.length;
+      document.getElementById('linkCount').textContent = links.length;
+
+      // Stop existing simulation
+      if (simulation) {
+        simulation.stop();
+      }
+
+      // Reset timing stats
+      tickTimes = [];
+      simStartTime = performance.now();
+      totalTickCount = 0;
+      totalTickTime = 0;
+      totalFrameCount = 0;
+      lastTickStart = 0;
+
+      // Create simulation based on mode
+      const SimulationClass = useGPU ? forceSimulationGPU : forceSimulation;
+
+      simulation = SimulationClass(nodes)
+        .force('link', forceLink(links).distance(30))
+        .force('charge', forceManyBody().strength(chargeStrength))
+        .force('center', forceCenter(width / 2, height / 2))
+        .force('collide', forceCollide().radius(d => d.radius + 1))
+        .on('tick', onTick);
+
+      // Apply optional forces based on checkboxes
+      if (document.getElementById('useForceX').checked) {
+        simulation.force('x', forceX(width / 2).strength(0.05));
+      }
+      if (document.getElementById('useForceY').checked) {
+        simulation.force('y', forceY(height / 2).strength(0.05));
+      }
+      if (document.getElementById('useRadial').checked) {
+        simulation.force('radial', forceRadial(150, width / 2, height / 2).strength(0.05));
+      }
+
+      // Update mode display
+      const modeText = useGPU ? 'WebGPU' : 'CPU';
+      document.getElementById('mode').textContent = modeText;
+      document.getElementById('mode').style.color = useGPU ? '#4caf50' : '#ff9800';
+
+      // Wait for GPU to be ready if using GPU mode
+      if (useGPU && simulation.gpuReady) {
+        await simulation.gpuReady();
+      }
+
+      simulation.restart();
+    }
+
+    // Tick handler with timing
+    function onTick() {
+      const tickEnd = performance.now();
+      if (lastTickStart > 0) {
+        const tickTime = tickEnd - lastTickStart;
+        tickTimes.push(tickTime);
+        // Keep last 60 samples for rolling average
+        if (tickTimes.length > 60) tickTimes.shift();
+
+        // Cumulative stats
+        totalTickCount++;
+        totalTickTime += tickTime;
+      }
+      lastTickStart = tickEnd;
+      render();
+    }
+
+    // Render function
+    function render() {
+      ctx.fillStyle = '#1a1a2e';
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw links
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      for (const link of links) {
+        const source = nodes[link.source.index !== undefined ? link.source.index : link.source];
+        const target = nodes[link.target.index !== undefined ? link.target.index : link.target];
+        if (source && target) {
+          ctx.moveTo(source.x, source.y);
+          ctx.lineTo(target.x, target.y);
+        }
+      }
+      ctx.stroke();
+
+      // Draw nodes
+      for (const node of nodes) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+      }
+
+      // Update stats
+      frameCount++;
+      totalFrameCount++;
+      const now = performance.now();
+
+      if (now - lastTime >= 1000) {
+        document.getElementById('fps').textContent = frameCount;
+        frameCount = 0;
+        lastTime = now;
+
+        // Update rolling average tick time (last 60 ticks)
+        if (tickTimes.length > 0) {
+          const rollingAvgTickTime = tickTimes.reduce((a, b) => a + b, 0) / tickTimes.length;
+          document.getElementById('tickTime').textContent = rollingAvgTickTime.toFixed(2);
+        }
+      }
+
+      // Update cumulative stats
+      const elapsed = (now - simStartTime) / 1000;
+      document.getElementById('elapsed').textContent = elapsed.toFixed(1);
+      document.getElementById('totalTicks').textContent = totalTickCount;
+
+      if (totalTickCount > 0) {
+        const avgTickTime = totalTickTime / totalTickCount;
+        document.getElementById('avgTickTime').textContent = avgTickTime.toFixed(2);
+      }
+
+      if (elapsed > 0) {
+        const avgFps = totalFrameCount / elapsed;
+        document.getElementById('avgFps').textContent = avgFps.toFixed(1);
+      }
+
+      if (simulation) {
+        document.getElementById('alpha').textContent = simulation.alpha().toFixed(3);
+      }
+    }
+
+    // Event handlers
+    document.getElementById('nodeSlider').addEventListener('input', (e) => {
+      document.getElementById('nodeSliderValue').textContent = e.target.value;
+    });
+
+    document.getElementById('chargeSlider').addEventListener('input', (e) => {
+      document.getElementById('chargeValue').textContent = e.target.value;
+      if (simulation) {
+        simulation.force('charge').strength(+e.target.value);
+        simulation.alpha(0.3).restart();
+      }
+    });
+
+    document.getElementById('useGPU').addEventListener('change', (e) => {
+      useGPU = e.target.checked;
+      const nodeCount = +document.getElementById('nodeSlider').value;
+      const chargeStrength = +document.getElementById('chargeSlider').value;
+      initSimulation(nodeCount, chargeStrength);
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      const nodeCount = +document.getElementById('nodeSlider').value;
+      const chargeStrength = +document.getElementById('chargeSlider').value;
+      initSimulation(nodeCount, chargeStrength);
+    });
+
+    document.getElementById('reheatBtn').addEventListener('click', () => {
+      if (simulation) {
+        simulation.alpha(1).restart();
+      }
+    });
+
+    // Force toggle event handlers
+    document.getElementById('useForceX').addEventListener('change', (e) => {
+      if (simulation) {
+        if (e.target.checked) {
+          simulation.force('x', forceX(width / 2).strength(0.05));
+        } else {
+          simulation.force('x', null);
+        }
+        simulation.alpha(0.3).restart();
+      }
+    });
+
+    document.getElementById('useForceY').addEventListener('change', (e) => {
+      if (simulation) {
+        if (e.target.checked) {
+          simulation.force('y', forceY(height / 2).strength(0.05));
+        } else {
+          simulation.force('y', null);
+        }
+        simulation.alpha(0.3).restart();
+      }
+    });
+
+    document.getElementById('useRadial').addEventListener('change', (e) => {
+      if (simulation) {
+        if (e.target.checked) {
+          simulation.force('radial', forceRadial(150, width / 2, height / 2).strength(0.05));
+        } else {
+          simulation.force('radial', null);
+        }
+        simulation.alpha(0.3).restart();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width;
+      canvas.height = height;
+      if (simulation) {
+        simulation.force('center', forceCenter(width / 2, height / 2));
+        simulation.alpha(0.3).restart();
+      }
+    });
+
+    // Drag interaction
+    let dragNode = null;
+
+    canvas.addEventListener('mousedown', (e) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      dragNode = simulation.find(x, y, 20);
+      if (dragNode) {
+        dragNode.fx = dragNode.x;
+        dragNode.fy = dragNode.y;
+        simulation.alphaTarget(0.3).restart();
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (dragNode) {
+        dragNode.fx = e.clientX;
+        dragNode.fy = e.clientY;
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => {
+      if (dragNode) {
+        dragNode.fx = null;
+        dragNode.fy = null;
+        dragNode = null;
+        simulation.alphaTarget(0);
+      }
+    });
+
+    // Start with default settings
+    initSimulation(500, -30);
+  </script>
+</body>
+</html>
