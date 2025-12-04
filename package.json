@@ -1,6 +1,6 @@
 {
   "name": "d3-force-webgpu",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "description": "Force-directed graph layout using velocity Verlet integration with WebGPU acceleration.",
   "homepage": "https://github.com/jamescarruthers/d3-force-webgpu",
   "repository": {
