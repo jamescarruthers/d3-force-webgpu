@@ -2,10 +2,10 @@
   "name": "d3-force-webgpu",
   "version": "3.1.0",
   "description": "Force-directed graph layout using velocity Verlet integration with WebGPU acceleration.",
-  "homepage": "https://d3js.org/d3-force/",
+  "homepage": "https://github.com/jamescarruthers/d3-force-webgpu",
   "repository": {
     "type": "git",
-    "url": "https://github.com/d3/d3-force.git"
+    "url": "https://github.com/jamescarruthers/d3-force-webgpu.git"
   },
   "keywords": [
     "d3",
@@ -53,7 +53,7 @@
   "scripts": {
     "test": "mocha 'test/**/*-test.js' && eslint src test",
     "dev": "npx serve .",
-    "prepublishOnly": "rm -rf dist && yarn test && rollup -c",
+    "prepublishOnly": "npx rimraf dist && npm test && rollup -c",
     "postpublish": "git push && git push --tags && cd ../d3.github.com && git pull && cp ../${npm_package_name}/dist/${npm_package_name}.js ${npm_package_name}.v${npm_package_version%%.*}.js && cp ../${npm_package_name}/dist/${npm_package_name}.min.js ${npm_package_name}.v${npm_package_version%%.*}.min.js && git add ${npm_package_name}.v${npm_package_version%%.*}.js ${npm_package_name}.v${npm_package_version%%.*}.min.js && git commit -m \"${npm_package_name} ${npm_package_version}\" && git push && cd -"
   },
   "engines": {

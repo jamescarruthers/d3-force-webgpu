@@ -67,7 +67,7 @@ export async function checkWebGPUSupport() {
   try {
     const adapter = await navigator.gpu.requestAdapter();
     return !!adapter;
-  } catch {
+  } catch (e) {
     return false;
   }
 }

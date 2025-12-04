@@ -3,7 +3,7 @@
 
 import { dispatch } from "d3-dispatch";
 import { timer } from "d3-timer";
-import { initWebGPU, getDevice, createComputePipeline } from "./device.js";
+import { initWebGPU, createComputePipeline } from "./device.js";
 import { NodeBuffers, LinkBuffers, SimulationParamsBuffer } from "./buffers.js";
 import { manyBodyShader, linkShader, integrateShader, collisionShader, forceXShader, forceYShader, forceRadialShader } from "./shaders.js";
 import lcg from "../lcg.js";
@@ -40,7 +40,6 @@ export default function (nodes) {
     paramsBuffer = null,
     pipelines = {},
     bindGroups = {},
-    gpuTickInProgress = false,
     gpuReadyPromise = null,
     gpuReadyResolve = null,
     gpuLoopRunning = false; // GPU compute loop running flag

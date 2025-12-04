@@ -2,10 +2,15 @@
   "extends": "eslint:recommended",
   "parserOptions": {
     "sourceType": "module",
-    "ecmaVersion": 8
+    "ecmaVersion": 2020
   },
   "env": {
-    "es6": true
+    "es6": true,
+    "browser": true
+  },
+  "globals": {
+    "GPUBufferUsage": "readonly",
+    "GPUMapMode": "readonly"
   },
   "rules": {
     "no-cond-assign": 0

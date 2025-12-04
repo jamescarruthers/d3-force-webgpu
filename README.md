@@ -1,7 +1,5 @@
 # d3-force-webgpu
 
-<a href="https://d3js.org"><img src="https://github.com/d3/d3/raw/main/docs/public/logo.svg" width="256" height="256"></a>
-
 GPU-accelerated force-directed graph layout using WebGPU compute shaders.
 
 This module extends [d3-force](https://github.com/d3/d3-force) with WebGPU acceleration, providing **10-100x speedup** for large graphs while maintaining full API compatibility.
