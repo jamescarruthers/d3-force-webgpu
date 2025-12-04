@@ -68,18 +68,6 @@ Returns a Promise that resolves to `true` if WebGPU is available.
 
 Synchronously returns `true` if the WebGPU API exists (doesn't check adapter availability).
 
-## Performance
-
-Performance improvement depends on graph size and hardware:
-
-| Nodes | Links | CPU (ms/tick) | GPU (ms/tick) | Speedup |
-|-------|-------|---------------|---------------|---------|
-| 1,000 | 1,500 | ~8ms | ~2ms | 4x |
-| 5,000 | 7,500 | ~180ms | ~8ms | 22x |
-| 10,000 | 15,000 | ~700ms | ~15ms | 47x |
-| 50,000 | 75,000 | ~15s | ~150ms | 100x |
-
-*Benchmarks on NVIDIA RTX 3080 / Intel i9-12900K*
 
 ## Browser Support
 
